@@ -1,0 +1,18 @@
+{
+  "manifest_version": 2,
+  "name": "Schnipsel",
+  "version": "1.0",
+
+  "description": "Collect snippets of web content, collage it, index it, search it, share it.",
+  "icons": {
+    "48": "icons/schnipsel-48.png"
+  },
+
+  "permissions": ["activeTab"],
+
+  "browser_action": {
+    "default_icon": "icons/schnipsel-32.png",
+    "default_title": "Schnipsel",
+    "default_popup": "popup/schnipsel-sack.html"
+  }
+}
