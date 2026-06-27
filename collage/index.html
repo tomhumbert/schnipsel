@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en" data-mode="light" data-accent="red">
+  <head>
+    <meta charset="utf-8" />
+    <title>Schnipsel</title>
+    <link rel="stylesheet" href="collage.css" />
+  </head>
+  <body>
+
+    <header>
+      <div class="header-inner">
+        <span class="logo">✂ Schnipsel</span>
+        <div class="header-tabs">
+          <button class="tab-btn active" data-tab="search">Search</button>
+          <button class="tab-btn" data-tab="collage">Collage</button>
+        </div>
+        <div class="theme-controls">
+          <button class="btn-mode" id="btn-mode" title="Toggle light/dark">☀</button>
+          <div class="accent-dots">
+            <button class="accent-dot active" data-accent="red"    title="Red"></button>
+            <button class="accent-dot"        data-accent="purple" title="Purple"></button>
+            <button class="accent-dot"        data-accent="pink"   title="Pink"></button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- ── Search tab ─────────────────────────────────────────── -->
+    <div id="tab-search" class="tab-panel active">
+
+      <!-- Search hero -->
+      <section id="hero">
+        <form id="search-form">
+          <div class="search-box">
+            <span class="search-icon">✦</span>
+            <input type="search" id="search-input" placeholder="Search your clips…" autocomplete="off" />
+            <button type="submit">Search</button>
+          </div>
+        </form>
+        <p class="hero-hint hidden" id="bag-hint"></p>
+      </section>
+
+      <!-- Results -->
+      <section id="results-section" class="hidden">
+        <div class="results-header">
+          <span id="results-count"></span>
+          <button class="btn-ghost" id="btn-clear">× clear</button>
+        </div>
+        <div id="results-grid"></div>
+      </section>
+
+    </div><!-- /tab-search -->
+
+    <!-- ── Collage tab ────────────────────────────────────────── -->
+    <div id="tab-collage" class="tab-panel collage-layout">
+
+      <!-- Left tray -->
+      <aside class="collage-tray">
+        <div class="tray-search-wrap">
+          <input type="search" id="tray-search" placeholder="Filter clips…" autocomplete="off" />
+        </div>
+        <div class="tray-list" id="tray-list">
+          <div class="tray-empty">Loading bags…</div>
+        </div>
+      </aside>
+
+      <!-- Right side: toolbar + canvas -->
+      <div class="collage-right">
+        <div class="canvas-toolbar">
+          <div class="canvas-selector">
+            <select id="canvas-select"></select>
+            <button class="btn-toolbar" id="btn-new-canvas">+ New</button>
+            <button class="btn-toolbar btn-toolbar-danger" id="btn-delete-canvas" title="Delete this canvas">🗑</button>
+          </div>
+          <div class="canvas-toolbar-actions">
+            <button class="btn-toolbar" id="btn-export">↓ Export</button>
+            <button class="btn-toolbar btn-toolbar-danger" id="btn-clear-canvas">× Clear</button>
+          </div>
+        </div>
+        <div class="collage-canvas-wrap">
+          <div id="collage-canvas" class="collage-canvas">
+            <div class="canvas-drop-hint" id="canvas-drop-hint">
+              <span class="canvas-drop-icon">✂</span>
+              <span>Drag clips from the tray to build a collage</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /tab-collage -->
+
+    <script src="collage.js"></script>
+  </body>
+</html>

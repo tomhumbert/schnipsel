@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en" data-mode="light" data-accent="red">
+  <head>
+    <meta charset="utf-8" />
+    <title>Schnipsel</title>
+    <link rel="stylesheet" href="sidebar.css" />
+  </head>
+  <body>
+
+    <!-- ── Header ─────────────────────────────────────────── -->
+    <header>
+      <div class="header-top">
+        <span class="logo">✂ Schnipsel</span>
+        <div class="theme-controls">
+          <button class="btn-mode" id="btn-mode" title="Toggle light/dark">☀</button>
+          <div class="accent-dots">
+            <button class="accent-dot active" data-accent="red"    title="Red"></button>
+            <button class="accent-dot"        data-accent="purple" title="Purple"></button>
+            <button class="accent-dot"        data-accent="pink"   title="Pink"></button>
+          </div>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button id="btn-collect">✂ Clip</button>
+        <button id="btn-open-collage" title="Open collage &amp; search page">⊞ Workspace</button>
+      </div>
+    </header>
+
+    <!-- ── Clip preview (shown after picking, before saving) ─ -->
+    <section id="preview-panel" class="hidden">
+      <h2>New clip</h2>
+      <div id="preview-frame-wrapper">
+        <iframe id="preview-frame" sandbox="allow-same-origin"></iframe>
+      </div>
+      <label for="bag-select">Save to bag</label>
+      <div class="row">
+        <select id="bag-select"></select>
+        <button class="btn-secondary" id="btn-new-bag">+ Bag</button>
+      </div>
+      <div class="row">
+        <button class="btn-save" id="btn-save-clip">Save</button>
+        <button class="btn-secondary" id="btn-discard-clip">Discard</button>
+      </div>
+    </section>
+
+    <!-- ── Search ─────────────────────────────────────────── -->
+    <section id="search-section">
+      <input type="search" id="search-input" placeholder="Search clips…" autocomplete="off" />
+    </section>
+
+    <!-- ── Bags list ──────────────────────────────────────── -->
+    <section id="bags-section">
+      <div class="section-header">
+        <h2>Bags</h2>
+        <div class="section-header-actions">
+          <button class="btn-icon" id="btn-export-bags" title="Export all bags to a file">⤓</button>
+          <button class="btn-icon" id="btn-import-bags" title="Import bags from a file">⤒</button>
+          <button class="btn-icon" id="btn-add-bag" title="New bag">+</button>
+        </div>
+      </div>
+      <ul id="bag-list"></ul>
+      <input type="file" id="import-file-input" accept="application/json,.json" hidden />
+    </section>
+
+    <!-- ── Clips inside a bag ─────────────────────────────── -->
+    <section id="clips-section" class="hidden">
+      <div class="section-header">
+        <button class="btn-ghost" id="btn-back">← back</button>
+        <h2 id="current-bag-name"></h2>
+      </div>
+      <div class="clips-scroll" id="clip-list"></div>
+    </section>
+
+    <!-- ── New bag dialog ─────────────────────────────────── -->
+    <div id="new-bag-dialog" class="dialog hidden">
+      <h2>New bag</h2>
+      <input type="text" id="new-bag-name" placeholder="Name your bag…" />
+      <div class="row">
+        <button class="btn-save" id="btn-create-bag">Create</button>
+        <button class="btn-secondary" id="btn-cancel-bag">Cancel</button>
+      </div>
+    </div>
+
+    <script src="sidebar.js"></script>
+  </body>
+</html>
