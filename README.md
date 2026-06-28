@@ -129,20 +129,20 @@ web-ext build      # packages a .zip for submission to AMO
 
 1. Open the Schnipsel sidebar.
 2. Click **✂ Clip** in the sidebar header. The cursor changes to a crosshair and elements highlight in orange as you hover.
-3. Clip one or more elements:
+3. Clip a single element, or a run of neighbours:
 
    | Action | Result |
    |--------|--------|
    | Click | Clip that element immediately, close the picker |
-   | Shift+click | Add element to selection (picker stays open) |
-   | Shift+click again | Deselect that element |
-   | Alt+click | Remove element from selection |
-   | Enter | Clip all selected elements as individual clips |
-   | Esc | Cancel, clear all selections |
+   | Shift+click | Start a selection at that element (its parent becomes the kept container) |
+   | Shift+click another sibling | Extend the selection to span that sibling |
+   | ↑ ↓ ← → | Grow / shrink the selection to adjacent siblings, one at a time |
+   | Enter | Clip the selection |
+   | Esc | Cancel |
 
-   A status bar appears at the bottom of the page while elements are selected, showing the count and available shortcuts.
+   A selection is a **contiguous run of sibling elements inside one container**. The clip keeps that container — so its background, padding, and layout framing are preserved — but drops the container's *other* children. (Think: keep two paragraphs of a card, lose the rest, but the card itself stays.) Trying to extend to an element in a *different* container is refused with a red, "not-allowed" cursor — no dialog. A status bar at the bottom of the page shows the count, the container tag, and the shortcuts.
 
-4. A preview of each clipped element appears in the sidebar. Choose a bag (or create a new one) and click **Save**.
+4. A preview of the clip appears in the sidebar. Choose a bag (or create a new one) and click **Save**.
 
 ### Managing bags
 

@@ -1,25 +1,57 @@
 /**
- * Content script — element picker with single and multi-select.
+ * Content script — element picker.
  *
  * Activated by { type: "ACTIVATE_PICKER" } from the background script.
  *
  * Interaction model:
- *   Click          — clip the element immediately (single-select, closes picker)
- *   Shift+click    — add element to selection (picker stays open)
- *   Alt+click      — remove element from selection
- *   Enter          — clip all selected elements as individual clips
+ *   Click          — clip that element immediately (single, closes picker)
+ *   Shift+click    — start a range, or extend it to another sibling. A range is a
+ *                    CONTIGUOUS run of sibling elements inside one parent container;
+ *                    the clip keeps that container (so its framing survives) but
+ *                    prunes the container's other children. Endpoints outside the
+ *                    container are refused with a visual cue (no dialog).
+ *   ↑ ↓ ← →        — grow / shrink the range to adjacent siblings
+ *   Enter          — clip the kept-container range
  *   Esc            — cancel, deactivate picker
  */
 
 (function () {
   let pickerActive = false;
   let hoveredEl    = null;
-  const selected   = new Set(); // Set<Element>
+
+  // --- Range-selection state ---
+  // A range is a contiguous slice of one container's element children.
+  let wrapperEl   = null;  // the kept container (fixed once a range starts)
+  let siblings    = [];    // wrapperEl's element children, in document order
+  let anchorIndex = -1;    // fixed end of the range
+  let focusIndex  = -1;    // moving end of the range
+
+  function rangeActive() { return wrapperEl !== null; }
+
+  function selectedChildren() {
+    if (!rangeActive()) return [];
+    const lo = Math.min(anchorIndex, focusIndex);
+    const hi = Math.max(anchorIndex, focusIndex);
+    return siblings.slice(lo, hi + 1);
+  }
+
+  // Walk up from `el` to the element that is a DIRECT child of wrapperEl.
+  // Returns null if `el` isn't inside wrapperEl (so it can't extend the range).
+  function resolveToWrapperChild(el) {
+    if (!wrapperEl || el === wrapperEl) return null;
+    let n = el;
+    while (n && n.parentElement !== wrapperEl) n = n.parentElement;
+    return n;
+  }
 
   // --- Styles injected into the page ---
 
-  const HOVER_STYLE    = "outline: 2px dashed #e05c00 !important; outline-offset: 2px !important; cursor: crosshair !important;";
-  const SELECTED_STYLE = "outline: 3px solid #e05c00 !important; outline-offset: 2px !important; cursor: crosshair !important;";
+  const HOVER_STYLE     = "outline: 2px dashed #e05c00 !important; outline-offset: 2px !important; cursor: crosshair !important;";
+  const SELECTED_STYLE  = "outline: 3px solid #e05c00 !important; outline-offset: 2px !important; cursor: crosshair !important;";
+  const WRAPPER_STYLE   = "outline: 2px dashed rgba(224,92,0,0.55) !important; outline-offset: 5px !important; cursor: crosshair !important;";
+  const CANDIDATE_STYLE = "outline: 2px dotted #e05c00 !important; outline-offset: 2px !important; cursor: crosshair !important;";
+  const DENIED_STYLE    = "outline: 2px dashed #c0392b !important; outline-offset: 2px !important; cursor: not-allowed !important;";
+  const DENIED_FLASH    = "outline: 3px solid #c0392b !important; outline-offset: 2px !important; cursor: not-allowed !important;";
 
   // --- Status bar (fixed overlay) ---
 
@@ -51,13 +83,15 @@
   }
 
   function updateStatusBar() {
-    if (selected.size === 0) {
+    if (!rangeActive()) {
       removeStatusBar();
       return;
     }
     ensureStatusBar();
+    const count = selectedChildren().length;
+    const tag = wrapperEl.tagName.toLowerCase();
     statusBar.textContent =
-      `${selected.size} selected  ·  Enter to clip  ·  Shift+click to add  ·  Alt+click to remove  ·  Esc to cancel`;
+      `${count} in <${tag}>  ·  ↑↓ grow  ·  Shift-click a sibling  ·  Enter to clip  ·  Esc to cancel`;
   }
 
   function removeStatusBar() {
@@ -67,10 +101,63 @@
     }
   }
 
+  // --- Hint toast (shown when the picker arms; auto-fades) ---
+
+  let hintBar   = null;
+  let hintTimer = null;
+
+  function showHint() {
+    removeHint();
+    hintBar = document.createElement("div");
+    hintBar.textContent = "✂ Click to clip  ·  hold Shift to select a range  ·  Esc to cancel";
+    Object.assign(hintBar.style, {
+      position:       "fixed",
+      top:            "24px",
+      left:           "50%",
+      transform:      "translateX(-50%) translateY(-6px)",
+      zIndex:         "2147483647",
+      background:     "rgba(20,18,16,0.9)",
+      color:          "#fff",
+      fontFamily:     "'Courier New', monospace",
+      fontSize:       "12px",
+      padding:        "8px 18px",
+      borderRadius:   "8px",
+      border:         "1px solid rgba(224,92,0,0.6)",
+      boxShadow:      "0 4px 20px rgba(0,0,0,0.4)",
+      backdropFilter: "blur(10px)",
+      pointerEvents:  "none",
+      whiteSpace:     "nowrap",
+      letterSpacing:  "0.04em",
+      opacity:        "0",
+      transition:     "opacity 0.2s ease, transform 0.2s ease",
+    });
+    document.body.appendChild(hintBar);
+    requestAnimationFrame(() => {
+      if (!hintBar) return;
+      hintBar.style.opacity = "1";
+      hintBar.style.transform = "translateX(-50%) translateY(0)";
+    });
+    clearTimeout(hintTimer);
+    hintTimer = setTimeout(fadeHint, 3500);
+  }
+
+  function fadeHint() {
+    if (!hintBar) return;
+    hintBar.style.opacity = "0";
+    hintBar.style.transform = "translateX(-50%) translateY(-6px)";
+    setTimeout(removeHint, 220);
+  }
+
+  function removeHint() {
+    clearTimeout(hintTimer);
+    if (hintBar) { hintBar.remove(); hintBar = null; }
+  }
+
   // --- Activation / deactivation ---
 
   function activatePicker() {
-    if (pickerActive) return;
+    showHint();
+    if (pickerActive) return; // already armed — we just re-showed the hint
     pickerActive = true;
     document.addEventListener("mouseover",  onMouseOver,  true);
     document.addEventListener("mouseout",   onMouseOut,   true);
@@ -87,8 +174,9 @@
   function deactivatePicker() {
     pickerActive = false;
     clearHover();
-    clearAllSelections();
+    clearRange();
     removeStatusBar();
+    removeHint();
     document.removeEventListener("mouseover",  onMouseOver,  true);
     document.removeEventListener("mouseout",   onMouseOut,   true);
     document.removeEventListener("mousedown",  onMouseDown,  true);
@@ -98,29 +186,44 @@
 
   // --- Hover highlight ---
 
+  // The persistent style an element should carry based on its range role
+  // (so hover can be layered on top and cleanly removed again).
+  function baseStyleFor(el) {
+    if (!rangeActive()) return "";
+    if (el === wrapperEl) return WRAPPER_STYLE;
+    if (selectedChildren().includes(el)) return SELECTED_STYLE;
+    return "";
+  }
+
+  function restoreBase(el) {
+    const base = baseStyleFor(el);
+    if (base) applyStyle(el, base);
+    else removeStyle(el);
+  }
+
   function clearHover() {
-    if (hoveredEl && !selected.has(hoveredEl)) {
-      hoveredEl.style.removeProperty("outline");
-      hoveredEl.style.removeProperty("outline-offset");
-      hoveredEl.style.removeProperty("cursor");
-    }
+    if (hoveredEl) restoreBase(hoveredEl);
     hoveredEl = null;
   }
 
+  // Layer the right hover affordance on the element under the cursor.
+  function applyHover(el) {
+    if (!rangeActive()) { applyStyle(el, HOVER_STYLE); return; }
+    if (el === wrapperEl || selectedChildren().includes(el)) return; // keep its role style
+    // Inside the container → a valid extend target; outside → not allowed.
+    applyStyle(el, resolveToWrapperChild(el) ? CANDIDATE_STYLE : DENIED_STYLE);
+  }
+
   function onMouseOver(e) {
-    clearHover();
+    const prev = hoveredEl;
     hoveredEl = e.target;
-    // Don't overwrite the selected style
-    if (!selected.has(hoveredEl)) {
-      applyStyle(hoveredEl, HOVER_STYLE);
-    }
+    if (prev && prev !== hoveredEl) restoreBase(prev);
+    applyHover(hoveredEl);
     e.stopPropagation();
   }
 
   function onMouseOut(e) {
-    if (e.target === hoveredEl && !selected.has(hoveredEl)) {
-      removeStyle(hoveredEl);
-    }
+    if (e.target === hoveredEl) restoreBase(hoveredEl);
     hoveredEl = null;
     e.stopPropagation();
   }
@@ -139,39 +242,80 @@
     if (e.button !== 0) return;
     e.preventDefault();
     e.stopPropagation();
+    removeHint(); // first interaction — the hint has done its job
 
     const target = e.target;
 
-    if (e.altKey) {
-      // Alt+click — deselect
-      if (selected.has(target)) {
-        selected.delete(target);
-        removeStyle(target);
-        // Restore hover style since cursor is still over it
-        applyStyle(target, HOVER_STYLE);
-        updateStatusBar();
-      }
-      return;
-    }
-
     if (e.shiftKey) {
-      // Shift+click — add to selection (toggle off if already selected)
-      if (selected.has(target)) {
-        selected.delete(target);
-        applyStyle(target, HOVER_STYLE);
-      } else {
-        selected.add(target);
-        applyStyle(target, SELECTED_STYLE);
-      }
-      updateStatusBar();
+      if (!rangeActive()) startRange(target);
+      else                extendRangeTo(target);
       return;
     }
 
-    // Plain click — clip immediately (single element)
+    // Plain click — clip that single element immediately.
     deactivatePicker();
     serializeElement(target)
       .then((clip) => browser.runtime.sendMessage({ type: "CLIP_CREATED", clip }))
       .catch((err) => console.error("Schnipsel: failed to serialize clip", err));
+  }
+
+  // --- Range building ---
+
+  function startRange(target) {
+    if (!target.parentElement) return; // e.g. <html>
+    clearHover();
+    wrapperEl = target.parentElement;
+    siblings  = [...wrapperEl.children];
+    const idx = siblings.indexOf(target);
+    if (idx === -1) { wrapperEl = null; siblings = []; return; }
+    anchorIndex = focusIndex = idx;
+    renderSelection();
+    updateStatusBar();
+  }
+
+  function extendRangeTo(target) {
+    const child = resolveToWrapperChild(target);
+    const idx = child ? siblings.indexOf(child) : -1;
+    if (idx === -1) { flashDenied(target); return; }
+    focusIndex = idx;
+    clearHover();
+    renderSelection();
+    updateStatusBar();
+  }
+
+  // Grow/shrink the moving end of the range by one sibling.
+  function growFocus(delta) {
+    const next = focusIndex + delta;
+    if (next < 0 || next >= siblings.length) { pulseWrapper(); return; }
+    focusIndex = next;
+    renderSelection();
+    updateStatusBar();
+  }
+
+  // Acknowledge an invalid shift-click with a brief red pulse (no dialog).
+  function flashDenied(el) {
+    applyStyle(el, DENIED_FLASH);
+    setTimeout(() => {
+      if (el === wrapperEl || selectedChildren().includes(el)) return;
+      if (el === hoveredEl) applyHover(el);
+      else removeStyle(el);
+    }, 450);
+  }
+
+  // Brief edge pulse when the range can't grow any further.
+  function pulseWrapper() {
+    if (!wrapperEl) return;
+    applyStyle(wrapperEl, SELECTED_STYLE);
+    setTimeout(() => { if (wrapperEl) applyStyle(wrapperEl, WRAPPER_STYLE); }, 180);
+  }
+
+  // Repaint container + selected siblings from the current anchor/focus.
+  function renderSelection() {
+    if (wrapperEl) removeStyle(wrapperEl);
+    for (const el of siblings) removeStyle(el);
+    if (!rangeActive()) return;
+    applyStyle(wrapperEl, WRAPPER_STYLE);
+    for (const el of selectedChildren()) applyStyle(el, SELECTED_STYLE);
   }
 
   // --- Keyboard handler ---
@@ -182,26 +326,39 @@
       return;
     }
 
-    if (e.key === "Enter" && selected.size > 0) {
-      // Preserve DOM order so the collated layout is stable.
-      const elements = [...selected].sort((a, b) => {
-        const pos = a.compareDocumentPosition(b);
-        if (pos & Node.DOCUMENT_POSITION_FOLLOWING) return -1;
-        if (pos & Node.DOCUMENT_POSITION_PRECEDING) return 1;
-        return 0;
-      });
-      deactivatePicker();
-      serializeElements(elements)
-        .then((clip) => browser.runtime.sendMessage({ type: "CLIP_CREATED", clip }))
+    if (!rangeActive()) return;
+
+    // Grow / shrink the range to adjacent siblings (and stop the page scrolling).
+    if (e.key === "ArrowDown" || e.key === "ArrowRight") {
+      e.preventDefault(); e.stopPropagation();
+      growFocus(+1);
+      return;
+    }
+    if (e.key === "ArrowUp" || e.key === "ArrowLeft") {
+      e.preventDefault(); e.stopPropagation();
+      growFocus(-1);
+      return;
+    }
+
+    if (e.key === "Enter") {
+      e.preventDefault(); e.stopPropagation();
+      const wrapper = wrapperEl;
+      const sel = selectedChildren();
+      deactivatePicker(); // strips picker chrome from the live nodes before cloning
+      serializeSiblingRange(wrapper, sel)
+        .then((clip) => clip && browser.runtime.sendMessage({ type: "CLIP_CREATED", clip }))
         .catch((err) => console.error("Schnipsel: failed to serialize clip", err));
     }
   }
 
   // --- Selection helpers ---
 
-  function clearAllSelections() {
-    for (const el of selected) removeStyle(el);
-    selected.clear();
+  function clearRange() {
+    if (wrapperEl) removeStyle(wrapperEl);
+    for (const el of siblings) removeStyle(el);
+    wrapperEl = null;
+    siblings = [];
+    anchorIndex = focusIndex = -1;
   }
 
   function applyStyle(el, styleStr) {
@@ -273,58 +430,64 @@
     };
   }
 
-  // Collate several selected elements into ONE clip, positioned absolutely so
-  // they keep their approximate on-page layout relative to each other.
-  async function serializeElements(els) {
-    if (els.length === 1) return serializeElement(els[0]);
+  // Serialize a contiguous run of sibling elements while KEEPING their parent
+  // container, so the container's framing (background, padding, flex, …) survives
+  // but its other children are pruned away — like cutting a piece out of the page.
+  async function serializeSiblingRange(wrapper, kept) {
+    if (!wrapper || kept.length === 0) return null;
 
-    // Measure all elements first (positions shift once we start mutating).
-    const rects = els.map((el) => el.getBoundingClientRect());
-    let minLeft = Infinity, minTop = Infinity, maxRight = -Infinity, maxBottom = -Infinity;
-    for (const r of rects) {
-      minLeft   = Math.min(minLeft,   r.left);
-      minTop    = Math.min(minTop,    r.top);
-      maxRight  = Math.max(maxRight,  r.right);
-      maxBottom = Math.max(maxBottom, r.bottom);
-    }
-    const W = Math.max(1, Math.round(maxRight - minLeft));
-    const H = Math.max(1, Math.round(maxBottom - minTop));
+    // Strip any picker chrome from the container + its children so it isn't baked
+    // into the inlined computed styles.
+    removeStyle(wrapper);
+    for (const child of wrapper.children) removeStyle(child);
 
-    const wrapper = document.createElement("div");
-    wrapper.setAttribute("data-schnipsel-clip", "1");
-    wrapper.style.cssText =
-      `position:relative;width:${W}px;height:${H}px;box-sizing:border-box;`;
+    // Mark the live children we keep so we can find them in the clone after the
+    // style/pseudo passes (which add nodes and would shift positional indices).
+    const KEEP = "data-schnipsel-keep";
+    for (const child of kept) child.setAttribute(KEEP, "1");
 
-    for (let i = 0; i < els.length; i++) {
-      const r = rects[i];
-      const clone = buildStyledClone(els[i]);
-      // The holder is placed at the element's border-box position; the clone's
-      // own margins would shift it away from that, so neutralise them.
-      clone.style.setProperty("margin", "0", "important");
-      // Each element gets an absolutely-positioned holder at its offset within
-      // the union bounding box, preserving the original spatial arrangement.
-      const holder = document.createElement("div");
-      holder.style.cssText =
-        `position:absolute;` +
-        `left:${Math.round(r.left - minLeft)}px;` +
-        `top:${Math.round(r.top - minTop)}px;` +
-        `width:${Math.round(r.width)}px;`;
-      holder.appendChild(clone);
-      wrapper.appendChild(holder);
+    let clone;
+    try {
+      // Clone the FULL container so inlineStyles' parallel live/clone walk aligns.
+      clone = buildStyledClone(wrapper);
+    } finally {
+      for (const child of kept) child.removeAttribute(KEEP);
     }
     teardownProbe();
 
+    // Prune: keep marked children + the container's own ::before/::after spans.
+    for (const node of [...clone.children]) {
+      if (node.hasAttribute(KEEP) || node.hasAttribute("data-schnipsel-pseudo")) {
+        node.removeAttribute(KEEP);
+      } else {
+        node.remove();
+      }
+    }
+
+    // inlineStyles froze the container's height as a pixel value measured WITH all
+    // its original children. With most of them pruned, that height is too tall — let
+    // the container shrink to just the kept content. We must clear BOTH the physical
+    // and the logical (block-size) forms, since getComputedStyle inlines both.
+    for (const prop of ["height", "min-height", "block-size", "min-block-size"]) {
+      clone.style.removeProperty(prop);
+    }
+
     const fontStyle = await collectFontFaces();
+    const width = wrapper.getBoundingClientRect().width;
+    const outer = document.createElement("div");
+    outer.setAttribute("data-schnipsel-clip", "1");
+    outer.style.cssText = `width:${Math.round(width)}px;box-sizing:border-box;`;
     if (fontStyle) {
       const styleEl = document.createElement("style");
       styleEl.textContent = fontStyle;
-      wrapper.insertBefore(styleEl, wrapper.firstChild);
+      outer.appendChild(styleEl);
     }
+    outer.appendChild(clone);
 
-    // Merge index tokens from every element so search covers the whole group.
+    // Merge index tokens from each kept child so search covers the whole range.
     const merged = { text: [], images: [], links: [], ariaLabels: [], media: [] };
-    for (const el of els) {
-      const t = extractIndexTokens(el);
+    for (const child of kept) {
+      const t = extractIndexTokens(child);
       merged.text.push(t.text);
       merged.images.push(...t.images);
       merged.links.push(...t.links);
@@ -334,8 +497,8 @@
     merged.text = merged.text.join(" ");
 
     return {
-      html:        wrapper.outerHTML,
-      elementTag:  "group",
+      html:        outer.outerHTML,
+      elementTag:  wrapper.tagName.toLowerCase(),
       sourceUrl:   location.href,
       pageTitle:   document.title,
       indexTokens: merged,
@@ -365,22 +528,31 @@
 
   function ensureProbeDoc() {
     if (probeDoc) return;
-    const frame = document.createElement("iframe");
-    frame.setAttribute("aria-hidden", "true");
-    frame.style.cssText =
-      "position:absolute;width:0;height:0;border:0;visibility:hidden;left:-9999px;";
-    document.documentElement.appendChild(frame);
-    probeDoc = frame.contentDocument;
-    probeWin = frame.contentWindow;
-    // Pristine document — no page styles, just the UA stylesheet.
-    probeDoc.open();
-    probeDoc.write("<!doctype html><html><head></head><body></body></html>");
-    probeDoc.close();
+    try {
+      const frame = document.createElement("iframe");
+      frame.setAttribute("aria-hidden", "true");
+      frame.style.cssText =
+        "position:absolute;width:0;height:0;border:0;visibility:hidden;left:-9999px;";
+      document.documentElement.appendChild(frame);
+      // A freshly-created same-origin about:blank iframe already exposes a complete
+      // <html><head></head><body></body> with ONLY the UA stylesheet applied — which
+      // is exactly the pristine context we want. We deliberately do NOT call
+      // document.open()/write(): on the *initial* about:blank, Firefox throws
+      // "The operation is insecure", which used to abort the very first clip.
+      probeDoc = frame.contentDocument || null;
+      probeWin = frame.contentWindow || null;
+      if (!probeDoc || !probeDoc.body) { teardownProbe(); }
+    } catch (_) {
+      teardownProbe(); // fall back to inlining every property (see getDefaults)
+    }
   }
 
   function getDefaults(tagName) {
     if (defaultCache[tagName]) return defaultCache[tagName];
     ensureProbeDoc();
+    // If the probe couldn't be set up, return no defaults — inlineStyles then keeps
+    // every computed property (larger clips, but always correct).
+    if (!probeDoc || !probeDoc.body || !probeWin) return {};
     const tmp = probeDoc.createElement(tagName);
     probeDoc.body.appendChild(tmp);
     const c = probeWin.getComputedStyle(tmp);
