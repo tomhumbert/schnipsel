@@ -82,4 +82,4 @@ Make the canvas a richer composition surface, not just a place to arrange clips.
 
 | Version | Notable changes |
 |---|---|
-| 0.1.0 | Initial release: picker, bags, sidebar, search, collage, export/import, P2P foundation (identity + friends + sharing + federated search) |
+| 1.0.0 | First public release (2026): element picker, bags, sidebar, local search, collage workspace, OpenSearch, export/import, and the P2P foundation — cryptographic identity, mutual friends, signed + encrypted bag sharing, and federated peer search. |
