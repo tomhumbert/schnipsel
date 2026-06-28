@@ -59,6 +59,13 @@ Contribute clipped content to a shared, distributed search network. This is the 
 - Trust: how does the community index prevent spam and low-quality content from dominating results?
 - Incentives: what motivates clipping and sharing high-quality content?
 
+### Collage canvas enhancements
+
+Make the canvas a richer composition surface, not just a place to arrange clips.
+
+- **Text boxes** — add free-standing, editable text elements to a canvas (titles, captions, annotations between clips). Should persist in the canvas item model and be included in the standalone HTML export.
+- **Pen / drawing tool** — freehand drawing directly on the canvas (arrows, highlights, doodles) layered with the clip cards, also persisted and exported.
+
 ---
 
 ## Not planned (deliberate non-goals)
