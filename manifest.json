@@ -17,7 +17,7 @@
         "required": ["websiteContent"],
         "optional": []
       }
-    },
+    }
   },
 
   "permissions": [
