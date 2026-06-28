@@ -14,14 +14,17 @@ The long-term vision is a community-curated search engine built from collectivel
 
 ### Now
 - **Element picker** — hover any page element to highlight it, click to clip it. The clip captures the full computed style so it renders correctly outside the original page.
-- **Bags** — named collections that live in the extension sidebar. Create as many as you like and move clips between them.
+- **Bags** — named collections that live in the extension sidebar. Create as many as you like and move clips between them. Each bag is **private** by default and can be flipped **public** to share with friends.
 - **Sidebar UI** — a persistent Firefox sidebar panel with light/dark mode and three accent colour profiles (red, purple, pink).
 - **Search index** — a local full-text index built from clipped content. Covers plain text, image alt text, captions, aria-labels, surrounding prose context, video/audio metadata, and URL tokens. Not text-only.
+- **Profile** — a display name and avatar, tied to a cryptographic identity (a keypair). Your fingerprint is your real, unforgeable identifier.
+- **Friends (peer-to-peer)** — add a friend by exchanging short invite/response codes over any channel you like. Friendship is **mutual** — both sides explicitly confirm — so a leaked invite can't silently add a stranger.
+- **Shared bags** — share a public bag with chosen friends as a single signed, **encrypted** code. Only the friends you address can read it.
+- **Federated & advanced search** — search spans your own clips *and* your friends' public bags. The Workspace's **Search scope** picker lets you choose exactly which peers to include. Results show a verified "from <friend>" badge.
 
 ### Planned
-- **Collage page** — drag-and-drop canvas to compose clipped fragments into a layout.
-- **Sharing** — export a collage as a standalone HTML page or a hosted snapshot.
-- **Decentralised index** — contribute your index to a shared, P2P-distributed search network. Architecture is content-addressed from day one to support this.
+- **Live transport** — move the same signed/encrypted bundles automatically over WebRTC or a relay, instead of pasting codes by hand.
+- **Decentralised index** — contribute to a shared, P2P-distributed search network. Architecture is content-addressed and signed from day one to support this.
 
 ---
 
@@ -35,9 +38,18 @@ schnipsel/
 ├── content_scripts/
 │   └── schnipsel.js            Element picker, style inliner, token extractor
 ├── storage/
-│   └── store.js                Storage abstraction — clips in IndexedDB, bags in storage.local
+│   └── store.js                Storage abstraction — clips in IndexedDB, bags/friends/profile in storage.local
 ├── search/
-│   └── index.js                Inverted index over all content types
+│   └── index.js                Inverted index over all content types; federated peer search
+├── crypto/
+│   └── identity.js             ECDSA/ECDH keypairs, sign/verify, ECDH+HKDF+AES-GCM
+├── p2p/
+│   ├── invites.js              Mutual friend handshake (invite/response codes)
+│   └── transport.js            Signed+encrypted bag bundles + ingest pipeline
+├── security/
+│   └── sanitize.js             DOMPurify wrapper + remote-ref stripping + srcdoc CSP
+├── vendor/
+│   └── dompurify.js            Pinned, audited HTML sanitizer (see vendor/README.md)
 ├── sidebar/
 │   ├── sidebar.html            Sidebar panel markup
 │   ├── sidebar.css             Theming: light/dark, three accent profiles, glass + retro aesthetic
@@ -163,6 +175,30 @@ Use this to move your collection between machines or Firefox profiles, or as a s
 
 Click **⊞ Workspace** in the sidebar to open the full-page search and collage interface. Each clip result shows a thumbnail, the source hostname, and a **↗ visit** link to the original page.
 
+### Profile & friends (peer-to-peer)
+
+**Set up your profile** — click the profile strip at the top of the sidebar. Pick a display name and an avatar (PNG/JPEG/WEBP; it's re-encoded to a small square locally). Your **fingerprint** is shown — this is your cryptographic identity; share or compare it out-of-band to be sure a friend is really who they say.
+
+**Add a friend** — friendship is a mutual, two-step exchange so a leaked link can't add a stranger:
+
+1. Click **+** in the *Friends* section → **Generate invite code**. Send that code to your friend over any channel.
+2. Your friend pastes it into *their* extension, reviews your name + fingerprint, and **Accepts** — which produces a **reply code** they send back to you.
+3. You paste their reply, review *their* name + fingerprint, and **Confirm**. You're now friends.
+
+Invite codes are one-time and expire after 7 days.
+
+### Sharing a bag
+
+1. Flip a bag to **public** with its 🔒/🌐 toggle (a confirmation explains exactly what's shared — including the source URLs of pages you visited).
+2. Click the **📤** button on the public bag → choose which friends to share with → **Create share code**.
+3. Send the code to those friends. The code is **signed by you and encrypted to each chosen friend** — nobody else can read it.
+
+To receive, click **📥** in the *Friends* section and paste a code a friend sent you. It's verified, decrypted, integrity-checked, and sanitized before anything is stored.
+
+### Searching across friends
+
+Search (in the sidebar or the Workspace) automatically spans **your clips plus every friend's public bags**. Friend results carry a verified **"from <friend>"** badge. In the Workspace, open **⚙ Search scope** to pick exactly which peers (you and/or specific friends) a query should include.
+
 ### Theming
 
 The sidebar and Workspace page share theme preferences:
@@ -212,7 +248,20 @@ The index in `search/index.js` is a simple inverted token index persisted to `br
 | Any element | `aria-label`, `role="img"` |
 | Page metadata | `<title>`, source URL hostname + path segments |
 
-Search uses AND semantics across terms and supports prefix matching.
+Search uses AND semantics across terms and supports prefix matching. Friends' indices are kept **namespaced per friend** (never merged into your own), so a hostile peer can't pollute your index, and results always carry provenance.
+
+### Security model
+
+Once clips can come from other people, every byte of a clip is untrusted. The defenses are layered so no single one is load-bearing:
+
+- **No script execution, ever.** Clips render in sandboxed `<iframe srcdoc>` elements that are **never** given `allow-scripts` (and never `allow-same-origin`). On top of that, every clip is run through **DOMPurify** (vendored in `vendor/`, pinned and audited — no network access) on both ingest and render, and each iframe carries a strict `<meta>` CSP (`script-src 'none'`).
+- **No tracking beacons.** Friend-sourced clips additionally have all remote resource references stripped, and their CSP locks images/fonts/media to `data:` only — so viewing a clip can't phone home and reveal your IP or that you saw it.
+- **Cryptographic identity.** Each user has ECDSA (signing) + ECDH (key-agreement) P-256 keypairs, stored **non-extractable** in IndexedDB. Identity is the key fingerprint, not the name.
+- **Authenticated, encrypted sharing.** Bag bundles are ECDSA-signed and encrypted (ECDH → HKDF → AES-GCM) to each addressed friend. Recipients reject bundles that aren't from a known friend, whose keys don't match, whose signature fails, that aren't addressed to them, or that replay an old version.
+- **Integrity.** Clips are content-addressed (`SHA-256(html + sourceUrl)`); a received clip's hash is recomputed and must match before it's stored.
+- **Hardening.** Strict extension CSP; background message handlers reject any sender that isn't an extension page; the search index rejects prototype-pollution keys (`__proto__`, `constructor`, `prototype`) and caps per-friend size; avatars are re-encoded through a canvas (SVG rejected) and friend content is quota-limited.
+
+See [`vendor/README.md`](vendor/README.md) for how to re-verify the bundled sanitizer.
 
 ---
 
@@ -229,7 +278,13 @@ Search uses AND semantics across terms and supports prefix matching.
 | OpenSearch integration (address bar) | ✅ Done |
 | Collage drag-and-drop canvas | ✅ Done |
 | Collage export (standalone HTML) | ✅ Done |
-| Collage sharing (hosted) | 🔲 Planned |
+| Clip sanitization + render hardening | ✅ Done |
+| Cryptographic identity + profiles | ✅ Done |
+| Friends (mutual, link-based) | ✅ Done |
+| Public/private bags | ✅ Done |
+| Signed + encrypted bag sharing (codes) | ✅ Done |
+| Federated + advanced peer search | ✅ Done |
+| Live P2P transport (WebRTC / relay) | 🔲 Planned |
 | Decentralised / P2P index | 🔲 Planned |
 
 ---
@@ -243,4 +298,4 @@ git clone https://github.com/your-username/schnipsel.git
 web-ext run
 ```
 
-No build tooling, no framework dependencies, no transpilation. Plain HTML, CSS, and JavaScript — the WebExtension APIs are the only runtime dependency.
+No build tooling, no framework dependencies, no transpilation. Plain HTML, CSS, and JavaScript. The only bundled third-party code is [DOMPurify](https://github.com/cure53/DOMPurify) (vendored under `vendor/`, pinned and audited — see `vendor/README.md`); everything else relies solely on the WebExtension and Web Crypto APIs.

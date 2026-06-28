@@ -20,6 +20,16 @@
 
 const INDEX_KEY = "searchIndex";
 
+// Tokens are used directly as object keys in the inverted index. These three are
+// special property names that, if written, can corrupt the object's prototype
+// chain (prototype-pollution). Own clips can't produce them (normalizeTokens
+// strips underscores), but friend-sourced tokens are untrusted — reject them
+// everywhere a token becomes a key.
+const UNSAFE_KEYS = new Set(["__proto__", "prototype", "constructor"]);
+function isSafeToken(t) {
+  return typeof t === "string" && t.length > 0 && !UNSAFE_KEYS.has(t);
+}
+
 const index = {
   async _load() {
     const result = await browser.storage.local.get(INDEX_KEY);
@@ -34,6 +44,7 @@ const index = {
     const idx = await this._load();
     const tokens = tokenize(clip);
     for (const token of tokens) {
+      if (!isSafeToken(token)) continue;
       if (!idx[token]) idx[token] = [];
       if (!idx[token].includes(clip.id)) {
         idx[token].push(clip.id);
@@ -57,25 +68,85 @@ const index = {
    */
   async search(query) {
     const idx = await this._load();
-    const terms = normalizeTokens(query.split(/\s+/));
-    if (terms.length === 0) return [];
+    return searchInMap(idx, query);
+  },
 
-    const allTokens = Object.keys(idx);
+  /** Safe, normalized tokens for a clip — reused when building a friend's index. */
+  tokensFor(clip) {
+    return tokenize(clip).filter(isSafeToken);
+  },
 
-    // For each query term, find all index tokens that start with it
-    const matchedSets = terms.map((term) => {
-      const matchingTokens = allTokens.filter((t) => t.startsWith(term));
-      const ids = new Set();
-      for (const t of matchingTokens) idx[t].forEach((id) => ids.add(id));
-      return ids;
-    });
+  /**
+   * Build an inverted index (token → [clipId]) from a set of clips. Uses a
+   * null-prototype object and rejects unsafe keys so a friend's tokens can never
+   * pollute the prototype chain.
+   */
+  buildMap(clips) {
+    const map = Object.create(null);
+    for (const clip of clips || []) {
+      for (const token of this.tokensFor(clip)) {
+        if (!map[token]) map[token] = [];
+        if (!map[token].includes(clip.id)) map[token].push(clip.id);
+      }
+    }
+    return map;
+  },
 
-    // Intersect all sets (AND)
-    const [first, ...rest] = matchedSets;
-    const result = [...first].filter((id) => rest.every((set) => set.has(id)));
-    return result;
+  /** Run a query against an arbitrary token map (local or a friend's). */
+  searchInMap(idx, query) {
+    return searchInMap(idx, query);
+  },
+
+  /**
+   * Search across the local index AND friends' public-bag indices.
+   *
+   * `peers`: which sources to include — null/undefined means everyone (you + all
+   * friends). Otherwise an array of selectors: the string "me" for your own clips
+   * and a friend fingerprint for each friend to include.
+   *
+   * Returns provenance-tagged refs `{ owner: "me" | <fingerprint>, clipId }`,
+   * round-robin interleaved across sources so no single peer can dominate results.
+   */
+  async federatedSearch(query, peers) {
+    const localIdx = await this._load();
+    const friendIndices = await store.getFriendIndices(); // { [fp]: tokenMap }
+
+    const includeMe = !peers || peers.includes("me");
+    const friendFps = Object.keys(friendIndices).filter((fp) => !peers || peers.includes(fp));
+
+    const buckets = [];
+    if (includeMe) buckets.push({ owner: "me", ids: searchInMap(localIdx, query) });
+    for (const fp of friendFps) buckets.push({ owner: fp, ids: searchInMap(friendIndices[fp], query) });
+
+    const out = [];
+    for (let i = 0; ; i++) {
+      let any = false;
+      for (const b of buckets) {
+        if (i < b.ids.length) { out.push({ owner: b.owner, clipId: b.ids[i] }); any = true; }
+      }
+      if (!any) break;
+    }
+    return out;
   },
 };
+
+// Prefix-match AND search over a token→[clipId] map. Shared by the local index
+// and each friend's namespaced index.
+function searchInMap(idx, query) {
+  const terms = normalizeTokens(query.split(/\s+/));
+  if (terms.length === 0) return [];
+
+  const allTokens = Object.keys(idx);
+  const matchedSets = terms.map((term) => {
+    const matchingTokens = allTokens.filter((t) => t.startsWith(term));
+    const ids = new Set();
+    for (const t of matchingTokens) idx[t].forEach((id) => ids.add(id));
+    return ids;
+  });
+
+  const [first, ...rest] = matchedSets;
+  return [...first].filter((id) => rest.every((set) => set.has(id)));
+}
 
 // --- Tokenization ---
 

@@ -26,11 +26,38 @@
       </div>
     </header>
 
+    <!-- ── Profile strip (you) ───────────────────────────── -->
+    <section id="profile-bar" title="Edit your profile">
+      <span id="profile-avatar" class="avatar">🙂</span>
+      <span id="profile-name" class="profile-name">Set up your profile</span>
+      <button class="btn-ghost" id="btn-edit-profile" title="Edit profile">✎</button>
+    </section>
+
+    <!-- ── Profile editor ─────────────────────────────────── -->
+    <div id="profile-dialog" class="dialog hidden">
+      <h2>Your profile</h2>
+      <div class="profile-edit-row">
+        <span id="profile-avatar-preview" class="avatar avatar-lg">🙂</span>
+        <div class="profile-edit-fields">
+          <button class="btn-secondary" id="btn-choose-avatar">Choose image…</button>
+          <button class="btn-ghost" id="btn-clear-avatar" title="Remove avatar">remove</button>
+          <input type="file" id="avatar-file-input" accept="image/png,image/jpeg,image/webp" hidden />
+        </div>
+      </div>
+      <input type="text" id="profile-name-input" placeholder="Your display name…" maxlength="48" />
+      <p class="profile-fp-label">Your identity fingerprint (share/compare to verify it's really you):</p>
+      <code id="profile-fingerprint" class="profile-fp">—</code>
+      <div class="row">
+        <button class="btn-save" id="btn-save-profile">Save</button>
+        <button class="btn-secondary" id="btn-cancel-profile">Cancel</button>
+      </div>
+    </div>
+
     <!-- ── Clip preview (shown after picking, before saving) ─ -->
     <section id="preview-panel" class="hidden">
       <h2>New clip</h2>
       <div id="preview-frame-wrapper">
-        <iframe id="preview-frame" sandbox="allow-same-origin"></iframe>
+        <iframe id="preview-frame" sandbox=""></iframe>
       </div>
       <label for="bag-select">Save to bag</label>
       <div class="row">
@@ -62,6 +89,18 @@
       <input type="file" id="import-file-input" accept="application/json,.json" hidden />
     </section>
 
+    <!-- ── Friends ────────────────────────────────────────── -->
+    <section id="friends-section">
+      <div class="section-header">
+        <h2>Friends</h2>
+        <div class="section-header-actions">
+          <button class="btn-icon" id="btn-receive-bundle" title="Receive a shared bag">📥</button>
+          <button class="btn-icon" id="btn-add-friend" title="Add a friend">+</button>
+        </div>
+      </div>
+      <ul id="friend-list"></ul>
+    </section>
+
     <!-- ── Clips inside a bag ─────────────────────────────── -->
     <section id="clips-section" class="hidden">
       <div class="section-header">
@@ -81,6 +120,77 @@
       </div>
     </div>
 
+    <!-- ── Add-friend dialog ──────────────────────────────── -->
+    <div id="friends-dialog" class="dialog hidden">
+      <h2>Add a friend</h2>
+
+      <div class="friend-step">
+        <p class="step-label">① Invite someone</p>
+        <button class="btn-secondary" id="btn-gen-invite">Generate invite code</button>
+        <div id="invite-code-wrap" class="hidden">
+          <textarea id="invite-code-out" class="code-box" readonly rows="3"></textarea>
+          <button class="btn-ghost" id="btn-copy-invite">⧉ Copy</button>
+          <p class="hint">Send this to a friend over any channel. When they send a reply back, paste it below to finish.</p>
+        </div>
+      </div>
+
+      <div class="friend-step">
+        <p class="step-label">② Paste a code you received</p>
+        <textarea id="friend-code-in" class="code-box" rows="3" placeholder="Paste an invite or response code…"></textarea>
+        <button class="btn-secondary" id="btn-check-code">Check</button>
+
+        <div id="code-result" class="hidden">
+          <div class="friend-card">
+            <span id="result-avatar" class="avatar avatar-lg">🙂</span>
+            <div class="friend-card-meta">
+              <span id="result-name" class="friend-name"></span>
+              <code id="result-fp" class="profile-fp"></code>
+            </div>
+          </div>
+          <p id="result-action-hint" class="hint"></p>
+          <button class="btn-save" id="btn-commit-code">Add</button>
+          <div id="response-code-wrap" class="hidden">
+            <p class="hint">Send this reply back so your friend can confirm you:</p>
+            <textarea id="response-code-out" class="code-box" readonly rows="3"></textarea>
+            <button class="btn-ghost" id="btn-copy-response">⧉ Copy</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <button class="btn-secondary" id="btn-close-friends">Done</button>
+      </div>
+    </div>
+
+    <!-- ── Share-bag dialog ───────────────────────────────── -->
+    <div id="share-dialog" class="dialog hidden">
+      <h2>Share “<span id="share-bag-name"></span>”</h2>
+      <p class="hint">Choose friends to share this public bag with. Each gets an encrypted code only they can open.</p>
+      <div id="share-friend-list" class="share-friends"></div>
+      <button class="btn-save" id="btn-create-share">Create share code</button>
+      <div id="share-code-wrap" class="hidden">
+        <textarea id="share-code-out" class="code-box" readonly rows="3"></textarea>
+        <button class="btn-ghost" id="btn-copy-share">⧉ Copy</button>
+        <p class="hint">Send this to the selected friends over any channel.</p>
+      </div>
+      <div class="row">
+        <button class="btn-secondary" id="btn-close-share">Done</button>
+      </div>
+    </div>
+
+    <!-- ── Receive-bag dialog ─────────────────────────────── -->
+    <div id="receive-dialog" class="dialog hidden">
+      <h2>Receive a shared bag</h2>
+      <p class="hint">Paste a bag code a friend sent you. It's verified, decrypted, and sanitized before anything is stored.</p>
+      <textarea id="receive-code-in" class="code-box" rows="3" placeholder="Paste a bag code…"></textarea>
+      <div class="row">
+        <button class="btn-save" id="btn-ingest-bundle">Receive</button>
+        <button class="btn-secondary" id="btn-close-receive">Cancel</button>
+      </div>
+    </div>
+
+    <script src="../vendor/dompurify.js"></script>
+    <script src="../security/sanitize.js"></script>
     <script src="sidebar.js"></script>
   </body>
 </html>
