@@ -142,52 +142,102 @@ function bindSearchForm() {
     document.getElementById("results-section").classList.add("hidden");
     history.replaceState({}, "", location.pathname);
   });
+
+  document.getElementById("btn-toggle-peers").addEventListener("click", () => {
+    document.getElementById("peer-picker").classList.toggle("hidden");
+  });
+
+  initPeerPicker();
+}
+
+// --- Advanced search: choose which peers to include ---
+
+async function initPeerPicker() {
+  const picker = document.getElementById("peer-picker");
+  let me, friends;
+  try {
+    ({ me, friends } = await browser.runtime.sendMessage({ type: "GET_PEERS" }));
+  } catch (_) { return; }
+
+  picker.innerHTML = "";
+  const mkRow = (value, label, avatar) => {
+    const row = document.createElement("label");
+    row.className = "peer-row";
+    const cb = document.createElement("input");
+    cb.type = "checkbox"; cb.value = value; cb.checked = true;
+    cb.addEventListener("change", () => {});
+    const av = document.createElement("span");
+    av.className = "avatar avatar-xs";
+    setAvatarEl(av, avatar, value === "me" ? "🙂" : "👤");
+    const name = document.createElement("span");
+    name.textContent = label;
+    row.append(cb, av, name);
+    return row;
+  };
+
+  picker.appendChild(mkRow("me", "You" + (me?.name ? ` (${me.name})` : ""), me?.avatar));
+  for (const f of friends || []) {
+    picker.appendChild(mkRow(f.fingerprint, f.name || "(unnamed friend)", f.avatar));
+  }
+  if (!friends || friends.length === 0) {
+    const note = document.createElement("p");
+    note.className = "hint";
+    note.textContent = "Add friends to search their public bags too.";
+    picker.appendChild(note);
+  }
+}
+
+// Selected peers for the query, or null when everything is selected (= everyone).
+function currentPeers() {
+  const boxes = [...document.querySelectorAll("#peer-picker input[type=checkbox]")];
+  if (boxes.length === 0) return null;
+  const checked = boxes.filter((b) => b.checked).map((b) => b.value);
+  if (checked.length === boxes.length) return null;
+  return checked;
 }
 
 async function runSearch(query) {
-  const [{ results: clipIds }, { clips }] = await Promise.all([
-    browser.runtime.sendMessage({ type: "SEARCH", query }),
-    browser.runtime.sendMessage({ type: "GET_CLIPS" }),
-  ]);
-
-  const matched = (clips || []).filter((c) => (clipIds || []).includes(c.id));
-  renderResults(matched, query);
+  const { results } = await browser.runtime.sendMessage({
+    type: "SEARCH", query, peers: currentPeers(),
+  });
+  renderResults(results || [], query);
 }
 
-function renderResults(clips, query) {
+function renderResults(results, query) {
   const section = document.getElementById("results-section");
   const grid    = document.getElementById("results-grid");
   const count   = document.getElementById("results-count");
 
   section.classList.remove("hidden");
   grid.innerHTML = "";
-  count.textContent = clips.length === 0
+  count.textContent = results.length === 0
     ? "No results"
-    : `${clips.length} clip${clips.length === 1 ? "" : "s"}`;
+    : `${results.length} clip${results.length === 1 ? "" : "s"}`;
 
-  if (clips.length === 0) {
+  if (results.length === 0) {
     grid.innerHTML = `
       <div class="empty-state">
         <span class="empty-icon">🔍</span>
-        Nothing in your bags matches <em>"${esc(query)}"</em>.
+        Nothing matches <em>"${esc(query)}"</em>.
       </div>`;
     return;
   }
 
-  for (const clip of clips) {
-    grid.appendChild(buildClipCard(clip));
+  for (const r of results) {
+    grid.appendChild(buildClipCard(r.clip, r.owner));
   }
 }
 
-function buildClipCard(clip) {
+function buildClipCard(clip, owner = { kind: "me" }) {
+  const isFriend = owner && owner.kind === "friend";
   const card = document.createElement("div");
   card.className = "clip-card fade-in";
 
   const thumb = document.createElement("div");
   thumb.className = "clip-thumb";
   const iframe = document.createElement("iframe");
-  iframe.setAttribute("sandbox", "allow-same-origin");
-  iframe.srcdoc = clip.html;
+  iframe.setAttribute("sandbox", sanitize.IFRAME_SANDBOX);
+  iframe.srcdoc = sanitize.srcdoc(clip.html, { allowRemote: !isFriend });
   thumb.appendChild(iframe);
 
   const meta   = document.createElement("div");
@@ -218,8 +268,37 @@ function buildClipCard(clip) {
 
   footer.append(source, visitBtn);
   meta.append(title, footer);
+
+  // Verified provenance badge for friend-sourced clips.
+  if (isFriend) {
+    const badge = document.createElement("div");
+    badge.className = "clip-owner";
+    const av = document.createElement("span");
+    av.className = "avatar avatar-xs";
+    setAvatarEl(av, owner.avatar, "👤");
+    const who = document.createElement("span");
+    who.textContent = "from " + (owner.name || "a friend");
+    badge.append(av, who);
+    card.appendChild(badge);
+  }
+
   card.append(thumb, meta);
   return card;
+}
+
+// Render an avatar into an element: an <img> for a data URL, else a fallback glyph.
+function setAvatarEl(el, dataUrl, fallback = "👤") {
+  el.innerHTML = "";
+  if (dataUrl) {
+    const img = document.createElement("img");
+    img.src = dataUrl;
+    img.alt = "";
+    el.appendChild(img);
+    el.classList.add("has-img");
+  } else {
+    el.textContent = fallback;
+    el.classList.remove("has-img");
+  }
 }
 
 // ----------------------------------------------------------------
@@ -470,8 +549,8 @@ function buildTrayClip(clip) {
   const thumbEl = document.createElement("div");
   thumbEl.className = "tray-clip-thumb";
   const iframe = document.createElement("iframe");
-  iframe.setAttribute("sandbox", "allow-same-origin");
-  iframe.srcdoc = clip.html;
+  iframe.setAttribute("sandbox", sanitize.IFRAME_SANDBOX);
+  iframe.srcdoc = sanitize.srcdoc(clip.html);
   thumbEl.appendChild(iframe);
 
   const infoEl = document.createElement("div");
@@ -645,9 +724,10 @@ function renderCanvasCard(item) {
   body.className = "canvas-card-body";
   const iframe = document.createElement("iframe");
   // allow-popups + escape lets links inside the clip open in a new tab;
-  // the injected <base target="_blank"> routes every click there.
-  iframe.setAttribute("sandbox", "allow-same-origin allow-popups allow-popups-to-escape-sandbox");
-  iframe.srcdoc = `<base target="_blank">` + clip.html;
+  // the injected <base target="_blank"> routes every click there. No allow-scripts
+  // and no allow-same-origin: framed clip content stays inert with an opaque origin.
+  iframe.setAttribute("sandbox", sanitize.IFRAME_SANDBOX_POPUP);
+  iframe.srcdoc = sanitize.srcdoc(clip.html, { extraHead: `<base target="_blank">` });
   body.appendChild(iframe);
 
   // Resize handle
@@ -924,7 +1004,9 @@ function exportCanvas() {
     const iframeStyle =
       `width:${naturalW}px;height:${bodyH / scale}px;border:none;display:block;` +
       `transform:scale(${scale});transform-origin:top left;`;
-    const srcdoc = `<base target="_blank">` + (clip.html || "");
+    // Sanitize + wrap with the clip CSP at build time, so the exported standalone
+    // file (which has no access to DOMPurify) still carries inert, locked-down clips.
+    const srcdoc = sanitize.srcdoc(clip.html || "", { extraHead: `<base target="_blank">` });
 
     return `
   <div class="card" style="left:${item.x}px;top:${item.y}px;width:${item.w}px;height:${item.h}px;z-index:${item.z || 0};transform:rotate(${item.rotation || 0}deg);">
@@ -933,7 +1015,7 @@ function exportCanvas() {
       <a class="card-visit" href="${esc(clip.sourceUrl || "#")}" target="_blank" rel="noopener noreferrer">↗ visit</a>
     </div>
     <div class="card-body">
-      <iframe sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox" srcdoc="${esc(srcdoc)}" style="${iframeStyle}"></iframe>
+      <iframe sandbox="allow-popups allow-popups-to-escape-sandbox" srcdoc="${esc(srcdoc)}" style="${iframeStyle}"></iframe>
     </div>
   </div>`;
   }).join("\n");

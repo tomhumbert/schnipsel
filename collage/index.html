@@ -33,10 +33,14 @@
         <form id="search-form">
           <div class="search-box">
             <span class="search-icon">✦</span>
-            <input type="search" id="search-input" placeholder="Search your clips…" autocomplete="off" />
+            <input type="search" id="search-input" placeholder="Search your clips & friends'…" autocomplete="off" />
             <button type="submit">Search</button>
           </div>
         </form>
+        <div class="search-scope">
+          <button type="button" id="btn-toggle-peers" class="btn-ghost">⚙ Search scope</button>
+          <div id="peer-picker" class="peer-picker hidden"></div>
+        </div>
         <p class="hero-hint hidden" id="bag-hint"></p>
       </section>
 
@@ -89,6 +93,8 @@
 
     </div><!-- /tab-collage -->
 
+    <script src="../vendor/dompurify.js"></script>
+    <script src="../security/sanitize.js"></script>
     <script src="collage.js"></script>
   </body>
 </html>
