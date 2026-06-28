@@ -97,6 +97,7 @@ Full technical documentation is in the **[GitHub Wiki](https://github.com/tomhum
 | Federated peer search | ✅ |
 | Live P2P transport (WebRTC / relay) | 🔲 Planned |
 | Decentralised / P2P index | 🔲 Planned |
+| Collage canvas: text boxes + pen tool | 🔲 Planned |
 
 ---
 
