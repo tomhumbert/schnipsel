@@ -2,7 +2,7 @@
 
 ## Requirements
 
-- **Firefox 109 or later** — version 109 introduced the `sidebar_action` API that Schnipsel's sidebar panel depends on.
+- **Firefox 140 or later** — the manifest's `strict_min_version` is 140, the release that added support for the `data_collection_permissions` key AMO now requires. (The extension's own APIs, such as `sidebar_action`, work from Firefox 109; the floor is raised by the manifest requirement, not the code.)
 - **No build step** — the extension is plain JavaScript. Nothing to compile or bundle.
 
 ---
