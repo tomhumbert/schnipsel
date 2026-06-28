@@ -1,5 +1,6 @@
 .vscode
 schnipsel.code-workspace
+web-ext-artifacts/
 
 # Claude Code harness state (sessions, agent worktrees, plans) — never part of the repo
 .claude/
