@@ -22,6 +22,16 @@ web-ext lint
 
 No build step. No `npm install` for the project itself. Everything runs directly in Firefox.
 
+### Enable the git hooks (one-time)
+
+The repo ships a pre-commit hook (in `.githooks/`) that keeps the roadmap in sync. Point git at it once per clone:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+The hook blocks a commit that stages `wiki/Roadmap.md` without also staging the two snapshot tables (`README.md` and `wiki/Home.md`), since the roadmap lives in all three places. If a roadmap edit genuinely doesn't touch the snapshots (e.g. prose-only), bypass it with `git commit --no-verify`.
+
 If you don't use `web-ext`, load the extension manually:
 1. Go to `about:debugging#/runtime/this-firefox`
 2. Click **Load Temporary Add-on…** and select `manifest.json`

@@ -1,0 +1,30 @@
+#!/bin/sh
+# Roadmap sync guard.
+#
+# The roadmap lives in three places that must stay consistent:
+#   1. wiki/Roadmap.md   — the detailed roadmap
+#   2. wiki/Home.md      — the "Roadmap snapshot" table
+#   3. README.md         — the "## Roadmap" snapshot table
+#
+# If the detailed roadmap is part of this commit but the two snapshots are not,
+# block the commit. If the change genuinely doesn't touch the snapshot tables
+# (e.g. prose-only edits), re-run with `git commit --no-verify`.
+
+staged=$(git diff --cached --name-only)
+
+# Nothing to check unless the detailed roadmap is staged.
+echo "$staged" | grep -qx "wiki/Roadmap.md" || exit 0
+
+missing=""
+echo "$staged" | grep -qx "README.md"   || missing="$missing README.md"
+echo "$staged" | grep -qx "wiki/Home.md" || missing="$missing wiki/Home.md"
+
+if [ -n "$missing" ]; then
+  echo "✗ Roadmap sync check failed."
+  echo "  wiki/Roadmap.md is staged, but these snapshot files are not:$missing"
+  echo "  The roadmap lives in 3 places — update the snapshot tables too."
+  echo "  If this change doesn't affect them, bypass with: git commit --no-verify"
+  exit 1
+fi
+
+exit 0
