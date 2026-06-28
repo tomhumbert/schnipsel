@@ -4,7 +4,7 @@ Source files: `p2p/invites.js`, `p2p/transport.js`
 
 Schnipsel's peer-to-peer layer is built on two primitives: **mutual friendship** (so a leaked code can never silently add a stranger) and **signed, encrypted bag bundles** (so only the addressed friends can read a share).
 
-The current *transport* for these bundles is a text code — paste it into any channel you like. The security layer is decoupled from the transport so that a WebRTC or relay backend can be swapped in later without touching the cryptographic pipeline.
+The current *transport* for these bundles is a text code — paste it into any channel you like. The security layer is decoupled from the transport so that a live serverless WebRTC backend can be swapped in later without touching the cryptographic pipeline.
 
 ---
 
@@ -169,6 +169,6 @@ After removal, the friend's content is completely gone from storage.
 
 ## Planned: live transport
 
-The current transport is copy-paste text codes. The planned WebRTC/relay backend will use the same bundle format and the same 8-step ingest pipeline. The only change will be how the bundle travels — not how it is built or verified.
+The current transport is copy-paste text codes. The planned serverless WebRTC backend (no relay server) will use the same bundle format and the same 8-step ingest pipeline. The only change will be how the bundle travels — not how it is built or verified.
 
 See [Roadmap](Roadmap).

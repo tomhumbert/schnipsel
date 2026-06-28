@@ -75,7 +75,7 @@ The P2P sharing protocol is designed so the *transport* is replaceable without c
 
 Today, bundles travel as text codes. A user copies a string and sends it to a friend over any channel — email, SMS, a chat app. This requires no server infrastructure and no new browser permissions.
 
-In the future, a WebRTC or relay-server transport can replace the copy-paste mechanic. The bundle format, the encryption scheme, and the 8-step ingest pipeline stay the same. Only the function that moves bytes changes.
+In the future, a serverless WebRTC transport (no relay server) can replace the copy-paste mechanic. The bundle format, the encryption scheme, and the 8-step ingest pipeline stay the same. Only the function that moves bytes changes.
 
 This is why `transport.buildBundle()` returns a code string and `transport.ingestBundle()` takes a code string — the underlying format does not assume anything about how the string travels.
 

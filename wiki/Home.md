@@ -130,7 +130,7 @@ All inter-component communication goes through `browser.runtime.sendMessage` to 
 | Friends (mutual handshake) | ✅ Done |
 | Signed + encrypted bag sharing | ✅ Done |
 | Federated peer search | ✅ Done |
-| Live P2P transport (WebRTC / relay) | 🔲 Planned |
+| Live P2P transport (serverless WebRTC) | 🔲 Planned |
 | Decentralised / P2P index | 🔲 Planned |
 | Collage canvas: text boxes + pen tool | 🔲 Planned |
 

@@ -119,7 +119,7 @@ If you are unsure whether a change affects security, ask in the issue rather tha
 
 - **Automated test suite** — unit or integration tests for `store.js`, `index.js`, and the crypto/P2P modules
 - **MV3 migration** — tracking Firefox's MV3 support and planning the migration
-- **WebRTC / relay transport** — implementing `transport.buildBundle` / `transport.ingestBundle` dispatch over a live channel
+- **Serverless WebRTC transport** — implementing `transport.buildBundle` / `transport.ingestBundle` dispatch over a live data channel (no relay server)
 - **Accessibility** — keyboard navigation, screen-reader labels, focus management in the sidebar and collage UI
 - **Performance** — the search index currently loads and saves the full JSON on every operation; a smarter persistence strategy would help for large collections
 - **Localisation** — the UI is English-only; infrastructure for l10n would be welcome

@@ -105,7 +105,7 @@ Full technical documentation is in the **[GitHub Wiki](https://github.com/tomhum
 | Friends (mutual handshake) | ✅ |
 | Signed + encrypted bag sharing | ✅ |
 | Federated peer search | ✅ |
-| Live P2P transport (WebRTC / relay) | 🔲 Planned |
+| Live P2P transport (serverless WebRTC) | 🔲 Planned |
 | Decentralised / P2P index | 🔲 Planned |
 | Collage canvas: text boxes + pen tool | 🔲 Planned |
 

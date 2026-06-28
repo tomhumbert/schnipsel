@@ -195,6 +195,6 @@ The same files (except `background.js` itself) are also loaded via `<script>` ta
 2. **No framework** — plain DOM APIs everywhere. No React, Vue, Svelte, or templating library.
 3. **Single storage abstraction** — nothing outside `store.js` calls browser storage APIs directly. This makes the storage backend swappable for a future P2P implementation.
 4. **Content-addressed clip IDs** — clip ID = `SHA-256(html + sourceUrl)`. Identical clips are deduplicated automatically; the ID scheme is compatible with IPFS, Hypercore, and other content-addressed backends.
-5. **P2P readiness** — the sharing transport is deliberately pluggable. Today it uses text codes; WebRTC or a relay server can be swapped in without changing the security layer.
+5. **P2P readiness** — the sharing transport is deliberately pluggable. Today it uses text codes; a serverless WebRTC transport can be swapped in without changing the security layer.
 
 See [Design Philosophy](Design-Philosophy) for the reasoning behind each of these.
