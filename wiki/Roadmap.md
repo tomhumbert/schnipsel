@@ -34,15 +34,17 @@ Feature milestones and their current status.
 
 Replace the copy-paste text code with an automatic transport. The bundle format, encryption scheme, and ingest pipeline stay identical — only the delivery mechanism changes.
 
-**Candidate approaches:**
-- **WebRTC** — browser-native, no server infrastructure required; needs a signalling mechanism
-- **Relay server** — simpler signalling; introduces a server dependency but one that sees only encrypted bundles
-- **Gun.js** — decentralised real-time graph database; was an early consideration for the community index layer
+**Decided: purely serverless (WebRTC).** No relay or signalling server, ever — the project stays fully peer-to-peer. (A relay would have made signalling trivial, but it's ruled out on principle.)
+
+**Two goals:**
+1. **Big payloads stop being pasted.** Shared bag bundles — large because they carry full clip HTML with inlined fonts/images — travel over the live WebRTC data channel instead of the clipboard. The huge per-share string disappears.
+2. **The remaining strings must shrink.** Serverless WebRTC still needs a one-time, out-of-band bootstrap to establish a channel, and friends are added via a handshake. Today these are walls of base64; they need to become small enough to be painless — e.g. short codes, QR codes, and compressing/trimming the identity payload (drop the avatar from the code, fetch it over the channel after connecting).
 
 **What needs to happen:**
-- Define a signalling protocol for WebRTC peer negotiation
-- Implement a transport module that wraps `buildBundle` / `ingestBundle` dispatch over the chosen channel
-- Decide on discovery (how do friends find each other online in real time)
+- Implement a transport module that wraps `buildBundle` / `ingestBundle` dispatch over a WebRTC data channel
+- Design a minimal serverless signalling bootstrap (small enough to QR/short-code), reusing the existing mutual-friend handshake where possible
+- Shrink the handshake/identity codes (compression, QR, defer large fields like avatars to post-connection)
+- Handle the offline case (peer not reachable) — fall back to the existing pasteable bundle
 
 ### Decentralised / P2P index
 
