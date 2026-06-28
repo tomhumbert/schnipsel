@@ -25,9 +25,20 @@ The long-term vision is a community-curated search engine built from collectivel
 
 ---
 
-## Quick start
+## Install
 
-**Requirements:** Firefox 109+ · No build step required
+**Requirements:** Firefox 140+
+
+1. Download the latest `schnipsel-*.xpi` from the [**Releases**](https://github.com/tomhumbert/schnipsel/releases/latest) page.
+2. In Firefox, open `about:addons`.
+3. Click the gear icon ⚙ → **Install Add-on From File…** and select the `.xpi`.
+4. Click the ✂ button in the toolbar to open the sidebar.
+
+The `.xpi` is Mozilla-signed, so it installs and persists on regular release Firefox. Because the extension ID is fixed, your bags and clips carry over when you install a newer version.
+
+## Develop
+
+To run the extension from source as a temporary add-on:
 
 1. Clone the repository:
    ```bash
@@ -35,9 +46,8 @@ The long-term vision is a community-curated search engine built from collectivel
    ```
 2. Open `about:debugging#/runtime/this-firefox` in Firefox.
 3. Click **Load Temporary Add-on…** and select `manifest.json`.
-4. Click the ✂ button in the toolbar to open the sidebar.
 
-For persistent installation (survives browser restarts), a signed XPI, and `web-ext` development workflow, see the [wiki: Getting Started](https://github.com/tomhumbert/schnipsel/wiki/Getting-Started).
+Temporary add-ons are removed when Firefox restarts. For the `web-ext` workflow and other details, see the [wiki: Getting Started](https://github.com/tomhumbert/schnipsel/wiki/Getting-Started).
 
 ---
 
