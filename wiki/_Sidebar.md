@@ -20,4 +20,5 @@
 **Project**
 - [Design Philosophy](Design-Philosophy)
 - [Contributing](Contributing)
+- [Releasing](Releasing)
 - [Roadmap](Roadmap)
