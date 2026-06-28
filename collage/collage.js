@@ -119,7 +119,22 @@ function bindTabSwitcher() {
       document.querySelectorAll(".tab-panel").forEach((panel) =>
         panel.classList.toggle("active", panel.id === `tab-${target}`)
       );
+      // Cards rendered while the collage panel was hidden couldn't be scaled
+      // (a hidden element has zero width). Now that it's visible, re-fit them.
+      if (target === "collage") requestAnimationFrame(rescaleAllCards);
     });
+  });
+}
+
+// Re-fit every canvas card's content to its current body size. Safe to call any
+// time; needed after the collage panel becomes visible (see bindTabSwitcher).
+function rescaleAllCards() {
+  const c = currentCanvas();
+  if (!c) return;
+  const byUid = Object.fromEntries(c.items.map((i) => [i.uid, i]));
+  document.querySelectorAll(".canvas-card").forEach((card) => {
+    const item = byUid[card.dataset.uid];
+    if (item) applyCardScale(card, item);
   });
 }
 
