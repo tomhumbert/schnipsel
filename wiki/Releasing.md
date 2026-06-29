@@ -1,6 +1,6 @@
 # Releasing
 
-Schnipsel is distributed as an **unlisted, self-signed XPI** via GitHub Releases. Releases are triggered automatically by pushing a git tag. Mozilla signs the package via their API; the signed `.xpi` is attached to the GitHub Release as a downloadable asset.
+Schnipsel is distributed as an **unlisted, Mozilla-signed XPI** via GitHub Releases. Releases are triggered automatically by pushing a git tag. Every version is uploaded to and signed by Mozilla via their API (the AMO credentials only authenticate your account — you never hold a signing key yourself); the signed `.xpi` is then attached to the GitHub Release as a downloadable asset.
 
 ---
 
@@ -9,15 +9,15 @@ Schnipsel is distributed as an **unlisted, self-signed XPI** via GitHub Releases
 ### 1. AMO API credentials
 
 1. Log in to [addons.mozilla.org](https://addons.mozilla.org/developers/) with your developer account.
-2. Go to **Manage API Keys** and generate a JWT issuer + secret.
+2. Go to **Manage API Keys** and generate a JWT issuer + secret. ⚠️ The secret is shown **only once** — copy it immediately; if lost, revoke and regenerate.
 3. In the GitHub repository go to **Settings → Secrets and variables → Actions** and add two secrets:
 
 | Secret name | Value |
 |-------------|-------|
-| `AMO_API_KEY` | Your JWT issuer (looks like `user:12345678:123`) |
-| `AMO_API_SECRET` | Your JWT secret |
+| `AMO_API_KEY` | Your JWT **issuer** (looks like `user:12345678:123`) |
+| `AMO_API_SECRET` | Your JWT **secret** (the long random string) |
 
-These are the only credentials the workflow needs. They are never printed in logs.
+The names must match exactly — a typo just makes the sign step fail with empty credentials. These are the only credentials the workflow needs; GitHub masks them in logs. Guard the secret: it can sign add-ons under your identity, so it lives only in GitHub Actions secrets, never in the repo.
 
 ### 2. `GITHUB_TOKEN` permissions
 
