@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "Schnipsel",
-  "version": "1.0.0",
+  "version": "1.0.1",
 
   "description": "Collect snippets of web content, collage it, index it, search it, share it.",
   "icons": {
