@@ -108,6 +108,7 @@ Full technical documentation is in the **[GitHub Wiki](https://github.com/tomhum
 | Live P2P transport (serverless WebRTC) | 🔲 Planned |
 | Decentralised / P2P index | 🔲 Planned |
 | Collage canvas: text boxes + pen tool | 🔲 Planned |
+| Storage usage display (total + per bag, incl. friends) | 🔲 Planned |
 
 ---
 

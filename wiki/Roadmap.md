@@ -68,6 +68,19 @@ Make the canvas a richer composition surface, not just a place to arrange clips.
 - **Text boxes** — add free-standing, editable text elements to a canvas (titles, captions, annotations between clips). Should persist in the canvas item model and be included in the standalone HTML export.
 - **Pen / drawing tool** — freehand drawing directly on the canvas (arrows, highlights, doodles) layered with the clip cards, also persisted and exported.
 
+### Storage usage display
+
+Surface how much disk each bag consumes, on the Workspace page.
+
+- **A total** across everything Schnipsel stores, plus a **per-bag breakdown**.
+- **Includes friend bags** — friend-sourced clips live in their own IndexedDB store (`friendClips`), so they need to be measured and attributed to their owning friend's bag separately from your own clips.
+- The bulk of the weight is clip HTML blobs (with inlined styles, and fonts/images as `data:` URIs), so sizing means summing the byte length of each bag's clip records rather than relying on a single quota number.
+
+**Design notes:**
+- A clip can belong to more than one bag (own clips) — decide whether per-bag figures attribute the full clip size to each bag (sums exceed the total) or split it; the total should be deduplicated either way.
+- `navigator.storage.estimate()` can give a quick overall figure, but the per-bag breakdown must be computed from the stored clip records.
+- All sizing should go through `store.js` (keep the storage abstraction intact).
+
 ---
 
 ## Not planned (deliberate non-goals)

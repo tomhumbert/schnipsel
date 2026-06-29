@@ -133,6 +133,7 @@ All inter-component communication goes through `browser.runtime.sendMessage` to 
 | Live P2P transport (serverless WebRTC) | 🔲 Planned |
 | Decentralised / P2P index | 🔲 Planned |
 | Collage canvas: text boxes + pen tool | 🔲 Planned |
+| Storage usage display (total + per bag, incl. friends) | 🔲 Planned |
 
 Full details: [Roadmap](Roadmap)
 
