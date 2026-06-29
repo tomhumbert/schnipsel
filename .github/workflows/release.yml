@@ -10,6 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write  # needed to create GitHub Releases
+      actions: write   # needed to dispatch the Pages deploy after release
 
     steps:
       - uses: actions/checkout@v5
@@ -18,7 +19,7 @@ jobs:
         run: npm install -g web-ext
 
       - name: Lint
-        run: web-ext lint --source-dir .
+        run: web-ext lint --source-dir . --self-hosted
 
       - name: Sign (AMO unlisted)
         run: |
@@ -33,3 +34,14 @@ jobs:
         with:
           files: web-ext-artifacts/*.xpi
           generate_release_notes: true
+
+      # Refresh the Pages-hosted update manifest. pages.yml regenerates
+      # updates.json from this just-published release, so installed copies
+      # see the new version. (workflow_dispatch fires even from GITHUB_TOKEN.)
+      - name: Refresh update manifest (GitHub Pages)
+        run: |
+          curl -s -X POST \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/workflows/pages.yml/dispatches" \
+            -d '{"ref":"main"}'

@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Schnipsel</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body {
+      font-family: "Courier New", monospace;
+      max-width: 40rem;
+      margin: 4rem auto;
+      padding: 0 1.5rem;
+      line-height: 1.6;
+      background: #f4ecdf;
+      color: #2a2622;
+    }
+    @media (prefers-color-scheme: dark) {
+      body { background: #1a1714; color: #e8e0d4; }
+      a { color: #f0a868; }
+    }
+    h1 { font-size: 2rem; margin-bottom: 0; }
+    .tagline { opacity: 0.7; margin-top: 0.25rem; }
+    a { color: #c0392b; }
+    .links { margin-top: 2rem; }
+    .links a { display: inline-block; margin-right: 1.25rem; }
+    code { background: rgba(128,128,128,0.18); padding: 0.1em 0.4em; border-radius: 4px; }
+    footer { margin-top: 3rem; opacity: 0.55; font-size: 0.85rem; }
+  </style>
+</head>
+<body>
+  <h1>✂ Schnipsel</h1>
+  <p class="tagline">Collect pieces of the web. Arrange them. Search them. Share them.</p>
+
+  <p>Schnipsel is a Firefox extension that clips fragments of any web page — keeping
+  their original layout and styling — and organises them into named bags you can
+  collage, search, and share peer-to-peer.</p>
+
+  <h2>Install</h2>
+  <ol>
+    <li>Download the latest <code>.xpi</code> from <a href="https://github.com/tomhumbert/schnipsel/releases/latest">Releases</a>.</li>
+    <li>In Firefox, open <code>about:addons</code> → gear icon ⚙ → <strong>Install Add-on From File…</strong></li>
+    <li>Click the ✂ button in the toolbar to open the sidebar.</li>
+  </ol>
+  <p>Once installed, Schnipsel updates itself automatically when a new version is released.</p>
+
+  <div class="links">
+    <a href="https://github.com/tomhumbert/schnipsel">Source</a>
+    <a href="https://github.com/tomhumbert/schnipsel/wiki">Documentation</a>
+    <a href="https://github.com/tomhumbert/schnipsel/releases/latest">Download</a>
+  </div>
+
+  <footer>Free software under the GNU GPL-3.0.</footer>
+</body>
+</html>

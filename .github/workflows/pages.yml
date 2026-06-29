@@ -1,0 +1,62 @@
+name: Deploy Pages
+
+# Publishes the site/ folder to GitHub Pages, and (re)generates the add-on
+# update manifest (updates.json) from the LATEST GitHub Release — so the update
+# manifest is always derived from the releases themselves, never hand-maintained.
+#
+# Triggers:
+#   - push to main touching site/ or this workflow (landing-page edits)
+#   - workflow_dispatch (manual, and how release.yml refreshes after a release)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'site/**'
+      - '.github/workflows/pages.yml'
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never run two Pages deploys at once.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Generate updates.json from the latest release
+        run: |
+          curl -s -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/latest" > release.json
+          python3 - <<'PY'
+          import json, os
+          d = json.load(open("release.json"))
+          tag = d.get("tag_name", "") or ""
+          ver = tag[1:] if tag.startswith("v") else tag
+          xpi = next((a["browser_download_url"] for a in d.get("assets", [])
+                      if a.get("name", "").endswith(".xpi")), "")
+          updates = [{"version": ver, "update_link": xpi}] if ver and xpi else []
+          out = {"addons": {"schnipsel@tomhumbert": {"updates": updates}}}
+          os.makedirs("site", exist_ok=True)
+          with open("site/updates.json", "w") as f:
+              f.write(json.dumps(out, indent=2) + "\n")
+          print("Wrote updates.json:", ver or "(no release yet)", xpi)
+          PY
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deploy
+        uses: actions/deploy-pages@v4

@@ -13,6 +13,7 @@
     "gecko": {
       "id": "schnipsel@tomhumbert",
       "strict_min_version": "140.0",
+      "update_url": "https://tomhumbert.github.io/schnipsel/updates.json",
       "data_collection_permissions": {
         "required": ["websiteContent"],
         "optional": []
