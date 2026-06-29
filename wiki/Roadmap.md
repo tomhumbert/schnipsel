@@ -65,12 +65,12 @@ Contribute clipped content to a shared, distributed search network. This is the 
 
 Make the canvas a richer composition surface, not just a place to arrange clips.
 
-- **Text boxes** — add free-standing, editable text elements to a canvas (titles, captions, annotations between clips). Should persist in the canvas item model and be included in the standalone HTML export.
-- **Pen / drawing tool** — freehand drawing directly on the canvas (arrows, highlights, doodles) layered with the clip cards, also persisted and exported.
+- **Text boxes** ([#3](https://github.com/tomhumbert/schnipsel/issues/3)) — add free-standing, editable text elements to a canvas (titles, captions, annotations between clips). Should persist in the canvas item model and be included in the standalone HTML export.
+- **Pen / drawing tool** ([#4](https://github.com/tomhumbert/schnipsel/issues/4)) — freehand drawing directly on the canvas (arrows, highlights, doodles) layered with the clip cards, also persisted and exported.
 
 ### Storage usage display
 
-Surface how much disk each bag consumes, on the Workspace page.
+([#5](https://github.com/tomhumbert/schnipsel/issues/5)) Surface how much disk each bag consumes, on the Workspace page.
 
 - **A total** across everything Schnipsel stores, plus a **per-bag breakdown**.
 - **Includes friend bags** — friend-sourced clips live in their own IndexedDB store (`friendClips`), so they need to be measured and attributed to their owning friend's bag separately from your own clips.
