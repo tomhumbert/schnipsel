@@ -21,7 +21,25 @@ The names must match exactly — a typo just makes the sign step fail with empty
 
 ### 2. `GITHUB_TOKEN` permissions
 
-The workflow uses the automatically-provided `GITHUB_TOKEN` to create GitHub Releases. No extra setup is required — it is scoped to `contents: write` in the workflow file.
+The workflows use the automatically-provided `GITHUB_TOKEN`. No extra setup is required — `release.yml` is scoped to `contents: write` (create releases) and `actions: write` (trigger the Pages deploy); `pages.yml` to `pages: write` + `id-token: write`.
+
+### 3. Enable GitHub Pages (for auto-updates)
+
+In **Settings → Pages**, set **Source** to **GitHub Actions**. This lets `pages.yml` publish the update manifest. One-time only.
+
+---
+
+## Auto-updates
+
+Installed copies update themselves — no manual reinstall per version.
+
+- `manifest.json` declares `browser_specific_settings.gecko.update_url`, pointing at `https://tomhumbert.github.io/schnipsel/updates.json` (hosted on GitHub Pages).
+- `pages.yml` **generates `updates.json` from the latest GitHub Release** (version from the tag, download link from the release's `.xpi` asset) and deploys it. It is never hand-maintained or committed — the releases are the single source of truth.
+- After `release.yml` publishes a new release, it dispatches `pages.yml`, so the update manifest refreshes automatically. Firefox then picks up the new version on its next update check.
+
+`update_url` is valid only for self-distributed (unlisted) add-ons — which is why `release.yml` lints with `--self-hosted` (the linter otherwise rejects `update_url` as if the add-on were AMO-listed).
+
+> Note: a version installed *before* `update_url` was added to the manifest (i.e. v1.0.0) won't auto-update; auto-updates apply from the first release that carries `update_url` onward.
 
 ---
 
