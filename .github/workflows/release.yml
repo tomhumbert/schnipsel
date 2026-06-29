@@ -29,6 +29,15 @@ jobs:
             --api-key=${{ secrets.AMO_API_KEY }} \
             --api-secret=${{ secrets.AMO_API_SECRET }}
 
+      # AMO names the signed file with an internal hash; rename it to a clean,
+      # predictable name (schnipsel-<version>.xpi) for the release asset.
+      - name: Rename signed XPI
+        run: |
+          ver="${GITHUB_REF_NAME#v}"
+          xpi=$(ls web-ext-artifacts/*.xpi | head -n1)
+          mv "$xpi" "web-ext-artifacts/schnipsel-${ver}.xpi"
+          ls -l web-ext-artifacts/
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
